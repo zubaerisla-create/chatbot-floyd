@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://ai-chat-model-1hde.onrender.com/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
