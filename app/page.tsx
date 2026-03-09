@@ -32,6 +32,7 @@ export default function ChatInterface() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // const inputReff = useRef<HTMLI
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

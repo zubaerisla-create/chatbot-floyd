@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://ai-chat-model-1hde.onrender.com/:path*',
+        destination: 'https://main-floyd-model.onrender.com/:path*',
       },
     ];
   },
