@@ -17,6 +17,10 @@ type Message = {
   isError?: boolean;
 };
 
+const formatMessage = (text: string) => {
+  return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+};
+
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -227,7 +231,7 @@ export default function ChatInterface() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatMessage(msg.text) }} />
                       <span className="mt-1 block text-right text-[10px] opacity-50">
                         {msg.time}
                       </span>
