@@ -1,4 +1,3 @@
-// app/components/ChatInterface.tsx
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
@@ -8,6 +7,11 @@ import { Send, Bot, User, AlertCircle, Loader2 } from "lucide-react";
 const ASK_API_URL = "/api/ask";
 const HEALTH_URL = "/api/health";
 
+type TableData = {
+  headers: string[];
+  rows: string[][];
+};
+
 type Message = {
   id: number;
   text: string;
@@ -15,10 +19,105 @@ type Message = {
   time: string;
   isLoading?: boolean;
   isError?: boolean;
+  tableData?: TableData;
 };
 
-const formatMessage = (text: string) => {
-  return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+const formatMessage = (text: string): { isTable: boolean; tableData?: TableData; html?: string } => {
+  // Check if the message contains a markdown table
+  const tableRegex = /\|(.+)\|[\s]*\n\|(?:[-]+\|)+[\s]*\n((?:\|.+\|[\s]*\n?)*)/g;
+  const tableMatch = tableRegex.exec(text);
+  
+  if (tableMatch) {
+    // Parse the table
+    const headerRow = tableMatch[1].split('|').map(cell => cell.trim()).filter(cell => cell);
+    const bodyRows = tableMatch[2].split('\n')
+      .filter(row => row.trim().startsWith('|'))
+      .map(row => row.split('|').map(cell => cell.trim()).filter(cell => cell));
+    
+    return {
+      isTable: true,
+      tableData: {
+        headers: headerRow,
+        rows: bodyRows
+      }
+    };
+  }
+  
+  // Regular text formatting
+  return {
+    isTable: false,
+    html: text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  };
+};
+
+// Table Component for rendering product data
+const ProductTable = ({ headers, rows }: { headers: string[], rows: string[][] }) => {
+  return (
+    <div className="w-full overflow-x-auto rounded-lg border border-gray-700/50 bg-gray-800/30">
+      <table className="w-full min-w-[600px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-gray-700/50 bg-gray-800/80">
+            {headers.map((header, index) => (
+              <th 
+                key={index} 
+                className={`px-4 py-3 text-left font-semibold text-gray-200 ${
+                  index === 1 ? 'w-[60%]' : 'w-[20%]'
+                }`}
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr 
+              key={rowIndex} 
+              className={`border-b border-gray-700/50 transition-colors hover:bg-gray-700/30 ${
+                rowIndex % 2 === 0 ? 'bg-gray-800/20' : 'bg-gray-800/40'
+              }`}
+            >
+              {row.map((cell, cellIndex) => (
+                <td 
+                  key={cellIndex} 
+                  className={`px-4 py-3 text-gray-300 ${
+                    cellIndex === 1 ? 'font-medium text-gray-100' : 'font-mono'
+                  }`}
+                >
+                  {cellIndex === 1 ? (
+                    <div className="flex items-center gap-2">
+              
+                      {cell}
+                    </div>
+                  ) : (
+                    cell
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      {/* Summary Cards for better visualization */}
+      {rows.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 border-t border-gray-700/50">
+          <div className="rounded-lg bg-gradient-to-br from-green-500/10 to-emerald-600/10 p-3 border border-green-500/20">
+            <p className="text-xs text-gray-400">Total Products</p>
+            <p className="text-xl font-bold text-white">{rows.length}</p>
+          </div>
+          <div className="rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 p-3 border border-blue-500/20">
+            <p className="text-xs text-gray-400">Top Product</p>
+            <p className="text-sm font-medium text-white truncate">{rows[0]?.[1]}</p>
+          </div>
+          <div className="rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/10 p-3 border border-purple-500/20">
+            <p className="text-xs text-gray-400">Highest Sales</p>
+            <p className="text-xl font-bold text-white">{rows[0]?.[2]}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default function ChatInterface() {
@@ -36,7 +135,6 @@ export default function ChatInterface() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // const inputReff = useRef<HTMLI
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,7 +157,7 @@ export default function ChatInterface() {
 
   const sendMessageToAPI = async (question: string): Promise<string> => {
     try {
-      console.log('Sending request to:', ASK_API_URL); // ডিবাগging
+      console.log('Sending request to:', ASK_API_URL);
       
       const response = await fetch(ASK_API_URL, {
         method: 'POST',
@@ -108,12 +206,30 @@ export default function ChatInterface() {
 
     try {
       const answer = await sendMessageToAPI(inputMessage);
+      
+      // Check if the answer contains a table and parse it
+      const formattedContent = formatMessage(answer);
+      
       setMessages(prev => 
-        prev.map(msg => 
-          msg.id === loadingId 
-            ? { ...msg, text: answer, isLoading: false }
-            : msg
-        )
+        prev.map(msg => {
+          if (msg.id === loadingId) {
+            if (formattedContent.isTable && formattedContent.tableData) {
+              return {
+                ...msg,
+                text: answer,
+                isLoading: false,
+                tableData: formattedContent.tableData
+              };
+            } else {
+              return {
+                ...msg,
+                text: answer,
+                isLoading: false
+              };
+            }
+          }
+          return msg;
+        })
       );
     } catch (error) {
       setMessages(prev => 
@@ -134,17 +250,17 @@ export default function ChatInterface() {
     }
   };
 
-  // Health check - এখন আপনার নিজের server-এ request যাবে
+  // Health check
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        console.log('Checking health at:', HEALTH_URL); // ডিবাগging
+        console.log('Checking health at:', HEALTH_URL);
         
         const response = await fetch(HEALTH_URL);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Health check response:', data); // ডিবাগging
+          console.log('Health check response:', data);
           setIsConnected(data.status === "ok");
         } else {
           setIsConnected(false);
@@ -165,6 +281,36 @@ export default function ChatInterface() {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    if (msg.isLoading) {
+      return (
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+          <span className="text-sm text-gray-400">DataBot is thinking...</span>
+        </div>
+      );
+    }
+
+    if (msg.tableData) {
+      return <ProductTable headers={msg.tableData.headers} rows={msg.tableData.rows} />;
+    }
+
+    const formattedContent = formatMessage(msg.text);
+    return (
+      <>
+        {formattedContent.html && (
+          <p 
+            className="text-[15px] leading-relaxed whitespace-pre-wrap" 
+            dangerouslySetInnerHTML={{ __html: formattedContent.html }} 
+          />
+        )}
+        <span className="mt-1 block text-right text-[10px] opacity-50">
+          {msg.time}
+        </span>
+      </>
+    );
   };
 
   return (
@@ -194,13 +340,13 @@ export default function ChatInterface() {
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
-          {messages.map((msg, index) => (
+        <div className="mx-auto max-w-5xl">
+          {messages.map((msg) => (
             <div
               key={msg.id}
               className={`mb-6 flex ${msg.sender === "me" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
-              <div className={`flex max-w-[80%] items-end gap-2 ${msg.sender === "me" ? "flex-row-reverse" : "flex-row"}`}>
+              <div className={`flex max-w-[90%] items-end gap-2 ${msg.sender === "me" ? "flex-row-reverse" : "flex-row"}`}>
                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                   msg.sender === "me" 
                     ? "bg-gradient-to-br from-blue-500 to-blue-600" 
@@ -214,29 +360,19 @@ export default function ChatInterface() {
                 </div>
 
                 <div
-                  className={`group relative rounded-2xl px-4 py-3 ${
+                  className={`group relative rounded-2xl ${
                     msg.sender === "me"
-                      ? "rounded-br-none bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                      ? "rounded-br-none bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-3"
                       : msg.isError
-                      ? "rounded-bl-none bg-gradient-to-br from-red-500/10 to-red-600/10 border border-red-500/20 text-gray-200"
+                      ? "rounded-bl-none bg-gradient-to-br from-red-500/10 to-red-600/10 border border-red-500/20 text-gray-200 px-4 py-3"
                       : msg.isLoading
-                      ? "rounded-bl-none bg-gray-800/50 backdrop-blur-sm border border-gray-700/50"
-                      : "rounded-bl-none bg-gray-800/50 backdrop-blur-sm border border-gray-700/50"
+                      ? "rounded-bl-none bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 px-4 py-3"
+                      : msg.tableData
+                      ? "rounded-bl-none bg-transparent border-0 p-0"
+                      : "rounded-bl-none bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 px-4 py-3"
                   }`}
                 >
-                  {msg.isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-green-500" />
-                      <span className="text-sm text-gray-400">DataBot is thinking...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatMessage(msg.text) }} />
-                      <span className="mt-1 block text-right text-[10px] opacity-50">
-                        {msg.time}
-                      </span>
-                    </>
-                  )}
+                  {renderMessageContent(msg)}
                 </div>
               </div>
             </div>
