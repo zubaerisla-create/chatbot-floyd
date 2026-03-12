@@ -103,17 +103,11 @@ const ProductTable = ({ headers, rows }: { headers: string[], rows: string[][] }
       {rows.length > 0 && (
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 border-t border-gray-700/50">
           <div className="rounded-lg bg-gradient-to-br from-green-500/10 to-emerald-600/10 p-3 border border-green-500/20">
-            <p className="text-xs text-gray-400">Total Products</p>
+            <p className="text-xs text-gray-400">Total</p>
             <p className="text-xl font-bold text-white">{rows.length}</p>
           </div>
-          <div className="rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 p-3 border border-blue-500/20">
-            <p className="text-xs text-gray-400">Top Product</p>
-            <p className="text-sm font-medium text-white truncate">{rows[0]?.[1]}</p>
-          </div>
-          <div className="rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/10 p-3 border border-purple-500/20">
-            <p className="text-xs text-gray-400">Highest Sales</p>
-            <p className="text-xl font-bold text-white">{rows[0]?.[2]}</p>
-          </div>
+      
+      
         </div>
       )}
     </div>
