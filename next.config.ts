@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://floyd-2.onrender.com/:path*',
+        destination: 'https://floyd-3.onrender.com/:path*',
       },
     ];
   },
